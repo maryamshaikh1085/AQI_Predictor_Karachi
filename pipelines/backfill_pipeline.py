@@ -9,78 +9,88 @@ import time
 
 load_dotenv()
 
-AQICN_API_KEY       = os.getenv("AQICN_API_KEY")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 HOPSWORKS_API_KEY   = os.getenv("HOPSWORKS_API_KEY")
 HOPSWORKS_PROJECT   = os.getenv("HOPSWORKS_PROJECT")
 HOPSWORKS_HOST      = os.getenv("HOPSWORKS_HOST")
-CITY                = os.getenv("CITY", "karachi")
+
+LAT, LON = 24.8607, 67.0011
 
 
-def fetch_aqi(city):
-    url  = f"https://api.waqi.info/feed/{city}/?token={AQICN_API_KEY}"
+def fetch_historical_pollution(dt: datetime):
+    start = int(dt.timestamp())
+    end   = start + 3600
+    url   = (f"http://api.openweathermap.org/data/2.5/air_pollution/history"
+             f"?lat={LAT}&lon={LON}&start={start}&end={end}"
+             f"&appid={OPENWEATHER_API_KEY}")
+    data  = requests.get(url).json()
+    if "list" not in data or len(data["list"]) == 0:
+        raise ValueError(f"No data for {dt}")
+    comp = data["list"][0]["components"]
+    aqi  = int(data["list"][0]["main"]["aqi"])
+    return {
+        "aqi":  aqi,
+        "pm25": float(comp.get("pm2_5", 0.0)),
+        "pm10": float(comp.get("pm10",  0.0)),
+        "no2":  float(comp.get("no2",   0.0)),
+        "so2":  float(comp.get("so2",   0.0)),
+        "co":   float(comp.get("co",    0.0)),
+        "o3":   float(comp.get("o3",    0.0)),
+    }
+
+
+def fetch_historical_weather(dt: datetime):
+    """Fetch real historical weather from Open-Meteo (completely free, no API key)."""
+    date_str = dt.strftime("%Y-%m-%d")
+    url = (f"https://archive-api.open-meteo.com/v1/archive"
+           f"?latitude={LAT}&longitude={LON}"
+           f"&start_date={date_str}&end_date={date_str}"
+           f"&hourly=temperature_2m,relative_humidity_2m"
+           f"&timezone=UTC")
     data = requests.get(url).json()
-    if data["status"] != "ok":
-        raise ValueError(f"AQICN error: {data}")
-    iaqi     = data["data"]["iaqi"]
-    base_aqi = float(data["data"]["aqi"])
+
+    if "hourly" not in data:
+        raise ValueError(f"No weather data for {dt}")
+
+    # Get noon value (hour 12)
+    temps     = data["hourly"]["temperature_2m"]
+    humidity  = data["hourly"]["relative_humidity_2m"]
+
     return {
-        "aqi":  max(0.0, base_aqi + np.random.uniform(-15, 15)),
-        "pm25": float(iaqi.get("pm25", {}).get("v", 0.0)),
-        "pm10": float(iaqi.get("pm10", {}).get("v", 0.0)),
-        "no2":  float(iaqi.get("no2",  {}).get("v", 0.0)),
-        "so2":  float(iaqi.get("so2",  {}).get("v", 0.0)),
-        "co":   float(iaqi.get("co",   {}).get("v", 0.0)),
-        "o3":   float(iaqi.get("o3",   {}).get("v", 0.0)),
+        "temperature": float(temps[12]),
+        "humidity":    float(humidity[12]),
     }
 
 
-def fetch_weather(city):
-    url  = (f"https://api.openweathermap.org/data/2.5/weather"
-            f"?q={city}&appid={OPENWEATHER_API_KEY}&units=metric")
-    data = requests.get(url).json()
-    if data.get("cod") != 200:
-        raise ValueError(f"Weather error: {data}")
-    precip = data.get("rain", {}).get("1h", 0.0)
+def build_features(poll, weather, dt):
     return {
-        "temperature":   float(data["main"]["temp"]) + np.random.uniform(-5, 5),
-        "humidity":      float(min(100, max(0, data["main"]["humidity"] + np.random.uniform(-10, 10)))),
-        "precipitation": float(max(0.0, precip + np.random.uniform(0, 2))),
+        "date":        dt.strftime("%Y-%m-%d %H:%M:%S"),
+        "aqi":         poll["aqi"],
+        "pm25":        poll["pm25"],
+        "pm10":        poll["pm10"],
+        "no2":         poll["no2"],
+        "so2":         poll["so2"],
+        "co":          poll["co"],
+        "o3":          poll["o3"],
+        "temperature": weather["temperature"],
+        "humidity":    weather["humidity"],
     }
 
 
-def build_features(aqi_data, weather_data, dt):
-    return {
-        "date":          dt.strftime("%Y-%m-%d %H:%M:%S"),
-        "aqi":           aqi_data["aqi"],
-        "pm25":          aqi_data["pm25"],
-        "pm10":          aqi_data["pm10"],
-        "no2":           aqi_data["no2"],
-        "so2":           aqi_data["so2"],
-        "co":            aqi_data["co"],
-        "o3":            aqi_data["o3"],
-        "temperature":   weather_data["temperature"],
-        "humidity":      weather_data["humidity"],
-        "precipitation": weather_data["precipitation"],
-        "next_day_aqi":  max(0.0, aqi_data["aqi"] + np.random.uniform(-20, 20)),
-    }
-
-
-def generate_backfill(days_back=90):
+def generate_backfill(days_back=120):
     rows  = []
     today = datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0)
-
-    print(f"Generating {days_back} days of backfill data...\n")
+    print(f"Fetching {days_back} days of real historical data...\n")
 
     for i in range(days_back, 0, -1):
         dt = today - timedelta(days=i)
         try:
             print(f"  {dt.strftime('%Y-%m-%d')}...", end=" ")
-            aqi_data     = fetch_aqi(CITY)
-            weather_data = fetch_weather(CITY)
-            row          = build_features(aqi_data, weather_data, dt)
+            poll    = fetch_historical_pollution(dt)
+            weather = fetch_historical_weather(dt)
+            row     = build_features(poll, weather, dt)
             rows.append(row)
-            print(f"AQI={row['aqi']:.1f}, Precip={row['precipitation']:.2f}mm ✅")
+            print(f"AQI={row['aqi']}, PM2.5={row['pm25']:.1f} ✅")
             time.sleep(0.3)
         except Exception as e:
             print(f"❌ {e}")
@@ -101,9 +111,9 @@ def store_backfill(df):
 
     fg = fs.get_or_create_feature_group(
         name="aqi_features",
-        version=3,
+        version=7,
         primary_key=["date"],
-        description="AQI features for Karachi",
+        description="Real AQI features for Karachi - 120 days",
         event_time="date",
     )
     fg.insert(df)
@@ -111,7 +121,7 @@ def store_backfill(df):
 
 
 if __name__ == "__main__":
-    df = generate_backfill(days_back=90)
+    df = generate_backfill(days_back=120)
     print(f"\nSample:")
-    print(df[["date", "aqi", "temperature", "precipitation", "next_day_aqi"]].head())
+    print(df[["date", "aqi", "pm25", "pm10", "temperature"]].head())
     store_backfill(df)
