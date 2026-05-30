@@ -2,8 +2,8 @@ name: Training Pipeline (Daily)
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # runs every day at 2am UTC
-  workflow_dispatch:       # allows manual trigger too
+    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 jobs:
   run-training-pipeline:
@@ -11,10 +11,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -25,7 +25,6 @@ jobs:
 
       - name: Run training pipeline
         env:
-          AQICN_API_KEY: ${{ secrets.AQICN_API_KEY }}
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
           HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
