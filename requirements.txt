@@ -10,3 +10,4 @@ seaborn
 joblib
 streamlit
 shap
+confluent-kafka
