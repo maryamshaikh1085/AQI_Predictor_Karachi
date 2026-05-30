@@ -1,0 +1,12 @@
+hopsworks==4.7.*
+pandas
+numpy
+requests
+python-dotenv
+scikit-learn
+xgboost
+matplotlib
+seaborn
+joblib
+streamlit
+shap
