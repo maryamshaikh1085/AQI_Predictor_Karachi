@@ -42,7 +42,7 @@ def connect_hopsworks():
 def load_features():
     project = connect_hopsworks()
     fs  = project.get_feature_store()
-    fg  = fs.get_feature_group(name="aqi_features", version=7)
+    fg  = fs.get_feature_group(name="aqi_features", version=1)
     df  = fg.read()
     df["date"] = pd.to_datetime(df["date"])
     return df.sort_values("date").reset_index(drop=True)

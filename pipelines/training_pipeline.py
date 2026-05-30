@@ -28,7 +28,7 @@ def fetch_training_data():
         project=HOPSWORKS_PROJECT
     )
     fs  = project.get_feature_store()
-    fg  = fs.get_feature_group(name="aqi_features", version=7)
+    fg  = fs.get_feature_group(name="aqi_features", version=1)
     df  = fg.read()
     df["date"] = pd.to_datetime(df["date"])
     df  = df.sort_values("date").reset_index(drop=True)
