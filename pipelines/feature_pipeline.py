@@ -45,7 +45,7 @@ def fetch_live_weather():
 def get_previous_aqi(fs):
     """Fetch last stored AQI to compute change rate."""
     try:
-        fg  = fs.get_feature_group(name="aqi_features", version=7)
+        fg  = fs.get_feature_group(name="aqi_features", version=1)
         df  = fg.read()
         df  = df.sort_values("date", ascending=False)
         return float(df["aqi"].iloc[0])

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import hopsworks
 import requests
+import shap 
 
 load_dotenv()
 
@@ -222,7 +223,38 @@ def main():
         plt.tight_layout()
         st.pyplot(fig)
 
+    # ── SHAP FEATURE IMPORTANCE ──
     st.divider()
+    st.subheader("🔍 Feature Importance (SHAP)")
+    st.caption("Shows which features contribute most to AQI predictions")
+
+    try:
+        df_shap = load_features()[FEATURE_COLS].dropna()
+
+        explainer   = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(df_shap)
+
+        mean_shap = pd.Series(
+            np.abs(shap_values).mean(axis=0),
+            index=FEATURE_COLS
+        ).sort_values(ascending=False)
+
+        fig_shap, ax_shap = plt.subplots(figsize=(7, 3))
+        colors = ["#ff7e00" if i == 0 else "#1e90ff" for i in range(len(mean_shap))]
+        mean_shap.plot(kind="barh", ax=ax_shap, color=colors)
+        ax_shap.set_xlabel("Mean |SHAP Value|")
+        ax_shap.set_title("Which features drive AQI predictions the most?")
+        ax_shap.invert_yaxis()
+        plt.tight_layout()
+        st.pyplot(fig_shap)
+
+        # Show top feature
+        top_feature = mean_shap.index[0]
+        st.info(f"🏆 Most influential feature: **{top_feature}** — "
+                f"this pollutant/weather variable has the strongest impact on AQI predictions.")
+
+    except Exception as e:
+        st.warning(f"SHAP could not be computed: {e}")
 
     # Historical AQI trend
     st.subheader("📈 Historical AQI Trend (Last 120 Days)")

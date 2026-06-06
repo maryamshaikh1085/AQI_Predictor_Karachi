@@ -12,3 +12,4 @@ streamlit
 shap
 confluent-kafka
 altair
+tensorflow

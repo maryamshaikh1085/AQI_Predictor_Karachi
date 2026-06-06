@@ -9,6 +9,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from xgboost import XGBRegressor
 import hopsworks
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from sklearn.preprocessing import StandardScaler
+import pickle
+from tensorflow.keras.layers import Input
+
 
 load_dotenv()
 
@@ -77,25 +83,63 @@ def train_models(df):
     gb.fit(X_train, y_train)
     results.append(evaluate("Gradient Boosting", gb, X_test, y_test))
 
+    # Neural Network
+    scaler         = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled  = scaler.transform(X_test)
+
+    nn = Sequential([
+        Input(shape=(X_train.shape[1],)),
+        Dense(64, activation="relu"),
+        Dense(32, activation="relu"),
+        Dense(16, activation="relu"),
+        Dense(1)
+    ])
+    nn.compile(optimizer="adam", loss="mse")
+    nn.fit(X_train_scaled, y_train, epochs=50, verbose=0)
+
+    nn_preds = nn.predict(X_test_scaled).flatten()
+    nn_rmse  = np.sqrt(mean_squared_error(y_test, nn_preds))
+    nn_mae   = mean_absolute_error(y_test, nn_preds)
+    nn_r2    = r2_score(y_test, nn_preds)
+    print(f"\nNeural Network:")
+    print(f"  RMSE : {nn_rmse:.4f}")
+    print(f"  MAE  : {nn_mae:.4f}")
+    print(f"  R²   : {nn_r2:.4f}")
+    results.append({
+        "name":  "Neural Network",
+        "model": nn,
+        "rmse":  nn_rmse,
+        "mae":   nn_mae,
+        "r2":    nn_r2
+    })
+
     best = min(results, key=lambda x: x["rmse"])
     print(f"\n🏆 Best model: {best['name']} (RMSE={best['rmse']:.4f}, R²={best['r2']:.4f})")
     return best
 
 
 def save_model(best, project):
-    path = "best_aqi_model.pkl"
-    joblib.dump(best["model"], path)
+    if best["name"] == "Neural Network":
+        path = "best_aqi_model.keras"
+        best["model"].save(path)
+    else:
+        path = "best_aqi_model.pkl"
+        joblib.dump(best["model"], path)
 
     mr    = project.get_model_registry()
     model = mr.sklearn.create_model(
         name="aqi_predictor",
-        metrics={"rmse": round(best["rmse"], 4), "mae": round(best["mae"], 4), "r2": round(best["r2"], 4)},
+        metrics={
+            "rmse": round(best["rmse"], 4),
+            "mae":  round(best["mae"],  4),
+            "r2":   round(best["r2"],   4)
+        },
         description=f"Best model: {best['name']} predicting AQI (1-5) for Karachi"
     )
     model.save(path)
-    print(f"✅ Model saved to Hopsworks Model Registry!")
-
-
+    print(f"✅ Model saved! Best: {best['name']}")
+    
 if __name__ == "__main__":
     df, project = fetch_training_data()
     best        = train_models(df)
