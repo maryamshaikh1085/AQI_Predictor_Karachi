@@ -174,13 +174,14 @@ def main():
 
     # Current conditions
     st.subheader("📍 Current Conditions in Karachi")
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("🌫️ AQI (1-5)",   f"{aqi_val} — {category}")
-    c2.metric("🌡️ Temperature", f"{live['temperature']}°C")
-    c3.metric("💧 Humidity",    f"{live['humidity']}%")
-    c4.metric("💨 PM2.5",       f"{live['pm25']} µg/m³")
-    c5.metric("💨 PM10",        f"{live['pm10']} µg/m³")
-    c6.metric("🌿 O3",          f"{live['o3']} µg/m³")
+    c1, c2, c3 = st.columns(3)
+    c4, c5, c6 = st.columns(3)
+    c1.metric("🌫️ AQI (1-5)",    f"{aqi_val} — {category}")
+    c2.metric("🌡️ Temperature",  f"{live['temperature']}°C")
+    c3.metric("💧 Humidity",     f"{live['humidity']}%")
+    c4.metric("💨 PM2.5",        f"{live['pm25']} µg/m³")
+    c5.metric("💨 PM10",         f"{live['pm10']} µg/m³")
+    c6.metric("🌿 O3",           f"{live['o3']} µg/m³")
 
     st.divider()
 
