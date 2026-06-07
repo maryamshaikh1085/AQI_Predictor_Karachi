@@ -3,7 +3,7 @@ pandas
 numpy
 requests
 python-dotenv
-scikit-learn
+scikit-learn==1.8.0
 xgboost
 matplotlib
 seaborn
