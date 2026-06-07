@@ -115,7 +115,7 @@ def train_models(df):
     })
 
     best = min(results, key=lambda x: x["rmse"])
-    print(f"\n🏆 Best model: {best['name']} (RMSE={best['rmse']:.4f}, R²={best['r2']:.4f})")
+    print(f"\n Best model: {best['name']} (RMSE={best['rmse']:.4f}, R²={best['r2']:.4f})")
     return best
 
 
@@ -138,7 +138,7 @@ def save_model(best, project):
         description=f"Best model: {best['name']} predicting AQI (1-5) for Karachi"
     )
     model.save(path)
-    print(f"✅ Model saved! Best: {best['name']}")
+    print(f" Model saved! Best: {best['name']}")
     
 if __name__ == "__main__":
     df, project = fetch_training_data()

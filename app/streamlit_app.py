@@ -454,7 +454,7 @@ def main():
             "NO2":   live["no2"],  "SO2":  live["so2"],
             "CO":    live["co"],   "O3":   live["o3"],
         }
-        # ── Background added to pollutant chart ──
+        # ──  pollutant chart ──
         BG = "#e8f3ff"
         fig, ax = plt.subplots(figsize=(6, 3.5))
         fig.patch.set_facecolor(BG)
@@ -485,7 +485,7 @@ def main():
             np.abs(shap_values).mean(axis=0), index=FEATURE_COLS
         ).sort_values(ascending=False)
 
-        # ── Background added to SHAP chart ──
+        # ── SHAP chart ──
         BG = "#e8f3ff"
         fig_s, ax_s = plt.subplots(figsize=(10, 3))
         fig_s.patch.set_facecolor(BG)
