@@ -120,25 +120,30 @@ def train_models(df):
 
 
 def save_model(best, project):
-    if best["name"] == "Neural Network":
-        path = "best_aqi_model.keras"
-        best["model"].save(path)
-    else:
-        path = "best_aqi_model.pkl"
-        joblib.dump(best["model"], path)
+    path = "best_aqi_model.pkl"
+    joblib.dump(best["model"], path)
 
-    mr    = project.get_model_registry()
-    model = mr.sklearn.create_model(
-        name="aqi_predictor",
-        metrics={
-            "rmse": round(best["rmse"], 4),
-            "mae":  round(best["mae"],  4),
-            "r2":   round(best["r2"],   4)
-        },
-        description=f"Best model: {best['name']} predicting AQI (1-5) for Karachi"
-    )
-    model.save(path)
-    print(f" Model saved! Best: {best['name']}")
+    for attempt in range(3):
+        try:
+            mr    = project.get_model_registry()
+            model = mr.sklearn.create_model(
+                name="aqi_predictor",
+                metrics={
+                    "rmse": round(best["rmse"], 4),
+                    "mae":  round(best["mae"],  4),
+                    "r2":   round(best["r2"],   4)
+                },
+                description=f"Best model: {best['name']} predicting AQI (1-5) for Karachi"
+            )
+            model.save(path)
+            print(f"✅ Model saved to Hopsworks Model Registry!")
+            return
+        except Exception as e:
+            print(f"⚠️ Attempt {attempt+1}/3 failed: {e}")
+            import time
+            time.sleep(10)
+
+    print("⚠️ Could not save to Hopsworks registry after 3 attempts. Model saved locally as best_aqi_model.pkl")
     
 if __name__ == "__main__":
     df, project = fetch_training_data()
