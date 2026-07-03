@@ -88,7 +88,6 @@ def build_row(poll, weather, prev_aqi=None):
 
 def store_features(df, fs):
     df["date"] = pd.to_datetime(df["date"])
-
     fg = fs.get_or_create_feature_group(
         name="aqi_features",
         version=1,
@@ -96,9 +95,10 @@ def store_features(df, fs):
         description="AQI features for Karachi with time features and change rate",
         event_time="date",
     )
-    fg.insert(df)
+    fg.insert(df, write_options={
+        "start_offline_materialization": False
+    })
     print(f"✅ Stored successfully!")
-
 
 if __name__ == "__main__":
     print("Fetching live data for Karachi...")
