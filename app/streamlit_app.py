@@ -53,7 +53,7 @@ def connect_hopsworks():
     )
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def load_features():
     project = connect_hopsworks()
     fs  = project.get_feature_store()
