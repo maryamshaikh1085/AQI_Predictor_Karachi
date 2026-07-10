@@ -95,9 +95,7 @@ def store_features(df, fs):
         description="AQI features for Karachi with time features and change rate",
         event_time="date",
     )
-    fg.insert(df, write_options={
-        "start_offline_materialization": False
-    })
+    fg.insert(df)
     print(f"✅ Stored successfully!")
 
 if __name__ == "__main__":
